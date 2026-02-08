@@ -1,8 +1,10 @@
 import { userAuthCheck, UnauthorizedResponse } from "../utils/userAuth";
 import { fetchUploadConfig, fetchSecurityConfig } from "../utils/sysConfig";
-import { createResponse, getUploadIp, getIPAddress, isExtValid,
-        moderateContent, purgeCDNCache, isBlockedUploadIp, buildUniqueFileId, endUpload } from "./uploadTools";
-import { initializeChunkedUpload, handleChunkUpload, uploadLargeFileToTelegram, handleCleanupRequest} from "./chunkUpload";
+import {
+    createResponse, getUploadIp, getIPAddress, isExtValid,
+    moderateContent, purgeCDNCache, isBlockedUploadIp, buildUniqueFileId, endUpload
+} from "./uploadTools";
+import { initializeChunkedUpload, handleChunkUpload, uploadLargeFileToTelegram, handleCleanupRequest } from "./chunkUpload";
 import { handleChunkMerge, checkMergeStatus } from "./chunkMerge";
 import { TelegramAPI } from "../utils/telegramAPI";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -19,7 +21,7 @@ export async function onRequest(context) {  // Contents of context object
     // 读取各项配置，存入 context
     const securityConfig = await fetchSecurityConfig(env);
     const uploadConfig = await fetchUploadConfig(env);
-    
+
     context.securityConfig = securityConfig;
     context.uploadConfig = uploadConfig;
 
@@ -61,7 +63,7 @@ export async function onRequest(context) {  // Contents of context object
     // 检查是否为分块上传
     const isChunked = url.searchParams.get('chunked') === 'true';
     const isMerge = url.searchParams.get('merge') === 'true';
-    
+
     if (isChunked) {
         if (isMerge) {
             return await handleChunkMerge(context);
@@ -81,7 +83,7 @@ async function processFileUpload(context, formdata = null) {
 
     // 解析表单数据
     formdata = formdata || await request.formData();
-    
+
     // 将 formdata 存储在 context 中
     context.formdata = formdata;
 
@@ -119,18 +121,18 @@ async function processFileUpload(context, formdata = null) {
     const fileType = formdata.get('file').type;
     let fileName = formdata.get('file').name;
     const fileSize = (formdata.get('file').size / 1024 / 1024).toFixed(2); // 文件大小，单位MB
-    
+
     // 检查fileType和fileName是否存在
     if (fileType === null || fileType === undefined || fileName === null || fileName === undefined) {
         return createResponse('Error: fileType or fileName is wrong, check the integrity of this file!', { status: 400 });
     }
-    
+
     // 如果上传文件夹路径为空，尝试从文件名中获取
     if (uploadFolder === '' || uploadFolder === null || uploadFolder === undefined) {
         uploadFolder = fileName.split('/').slice(0, -1).join('/');
     }
     // 处理文件夹路径格式，确保没有开头的/
-    const normalizedFolder = uploadFolder 
+    const normalizedFolder = uploadFolder
         ? uploadFolder.replace(/^\/+/, '') // 移除开头的/
             .replace(/\/{2,}/g, '/') // 替换多个连续的/为单个/
             .replace(/\/$/, '') // 移除末尾的/
@@ -164,11 +166,23 @@ async function processFileUpload(context, formdata = null) {
 
     // 获得返回链接格式, default为返回/file/id, full为返回完整链接
     const returnFormat = url.searchParams.get('returnFormat') || 'default';
+    const siteUrlPrefix = (context.uploadConfig?.urlPrefix || '').replace(/\/$/, ''); // 移除末尾/, 如果有
     let returnLink = '';
-    if (returnFormat === 'full') {
-        returnLink = `${url.origin}/file/${fullId}`;
+
+    // 構建基礎 path，確保包含 /file/
+    const filePath = `/file/${fullId}`;
+
+    if (returnFormat === 'full' || siteUrlPrefix) {
+        // 如果有設置 urlPrefix，優先使用
+        const baseUrl = siteUrlPrefix || url.origin;
+        // 確保連結中包含 /file/
+        if (baseUrl.includes('/file')) {
+            returnLink = `${baseUrl}/${fullId}`;
+        } else {
+            returnLink = `${baseUrl}${filePath}`;
+        }
     } else {
-        returnLink = `/file/${fullId}`;
+        returnLink = filePath;
     }
 
     /* ====================================不同渠道上传======================================= */
@@ -229,7 +243,7 @@ async function uploadFileToCloudflareR2(context, fullId, metadata, returnLink) {
     }
 
     const r2Channel = r2Settings.channels[0];
-    
+
     const R2DataBase = env.img_r2;
 
     // 写入R2数据库
@@ -258,10 +272,10 @@ async function uploadFileToCloudflareR2(context, fullId, metadata, returnLink) {
 
     // 成功上传，将文件ID返回给客户端
     return createResponse(
-        JSON.stringify([{ 'src': `${returnLink}` }]), 
+        JSON.stringify([{ 'src': returnLink }]),
         {
             status: 200,
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
             }
         }
@@ -364,7 +378,7 @@ async function uploadFileToS3(context, fullId, metadata, returnLink) {
 
         return createResponse(JSON.stringify([{ src: returnLink }]), {
             status: 200,
-            headers: { 
+            headers: {
                 "Content-Type": "application/json",
             },
         });
@@ -382,7 +396,7 @@ async function uploadFileToTelegram(context, fullId, metadata, fileExt, fileName
     // 选择一个 Telegram 渠道上传，若负载均衡开启，则随机选择一个；否则选择第一个
     const tgSettings = uploadConfig.telegram;
     const tgChannels = tgSettings.channels;
-    const tgChannel = tgSettings.loadBalance.enabled? tgChannels[Math.floor(Math.random() * tgChannels.length)] : tgChannels[0];
+    const tgChannel = tgSettings.loadBalance.enabled ? tgChannels[Math.floor(Math.random() * tgChannels.length)] : tgChannels[0];
     if (!tgChannel) {
         return createResponse('Error: No Telegram channel provided', { status: 400 });
     }
@@ -393,10 +407,10 @@ async function uploadFileToTelegram(context, fullId, metadata, fileExt, fileName
     const fileSize = file.size;
 
     const telegramAPI = new TelegramAPI(tgBotToken);
-    
+
     // 20MB 分片阈值
     const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB
-    
+
     if (fileSize > CHUNK_SIZE) {
         // 大文件分片上传
         return await uploadLargeFileToTelegram(env, file, fullId, metadata, fileName, fileType, url, returnLink, tgBotToken, tgChatId, tgChannel);
@@ -415,28 +429,28 @@ async function uploadFileToTelegram(context, fullId, metadata, fileExt, fileName
 
     // 选择对应的发送接口
     const fileTypeMap = {
-        'image/': {'url': 'sendPhoto', 'type': 'photo'},
-        'video/': {'url': 'sendVideo', 'type': 'video'},
-        'audio/': {'url': 'sendAudio', 'type': 'audio'},
-        'application/pdf': {'url': 'sendDocument', 'type': 'document'},
+        'image/': { 'url': 'sendPhoto', 'type': 'photo' },
+        'video/': { 'url': 'sendVideo', 'type': 'video' },
+        'audio/': { 'url': 'sendAudio', 'type': 'audio' },
+        'application/pdf': { 'url': 'sendDocument', 'type': 'document' },
     };
 
-    const defaultType = {'url': 'sendDocument', 'type': 'document'};
+    const defaultType = { 'url': 'sendDocument', 'type': 'document' };
 
-    let sendFunction = Object.keys(fileTypeMap).find(key => fileType.startsWith(key)) 
-        ? fileTypeMap[Object.keys(fileTypeMap).find(key => fileType.startsWith(key))] 
+    let sendFunction = Object.keys(fileTypeMap).find(key => fileType.startsWith(key))
+        ? fileTypeMap[Object.keys(fileTypeMap).find(key => fileType.startsWith(key))]
         : defaultType;
 
     // GIF 发送接口特殊处理
     if (fileType === 'image/gif' || fileType === 'image/webp' || fileExt === 'gif' || fileExt === 'webp') {
-        sendFunction = {'url': 'sendAnimation', 'type': 'animation'};
+        sendFunction = { 'url': 'sendAnimation', 'type': 'animation' };
     }
 
     // 根据服务端压缩设置处理接口：从参数中获取serverCompress，如果为false，则使用sendDocument接口
     if (url.searchParams.get('serverCompress') === 'false') {
-        sendFunction = {'url': 'sendDocument', 'type': 'document'};
+        sendFunction = { 'url': 'sendDocument', 'type': 'document' };
     }
-    
+
     // 上传文件到 Telegram
     let res = createResponse('upload error, check your environment params about telegram channel!', { status: 400 });
     try {
@@ -447,12 +461,12 @@ async function uploadFileToTelegram(context, fullId, metadata, fileExt, fileName
         // 更新FileSize
         metadata.FileSize = (fileInfo.file_size / 1024 / 1024).toFixed(2);
 
-        // 将响应返回给客户端
+        // 將響應返回給客戶端
         res = createResponse(
-            JSON.stringify([{ 'src': `${returnLink}` }]),
+            JSON.stringify([{ 'src': returnLink }]),
             {
                 status: 200,
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                 }
             }
@@ -517,10 +531,10 @@ async function uploadFileToExternal(context, fullId, metadata, returnLink) {
 
     // 返回结果
     return createResponse(
-        JSON.stringify([{ 'src': `${returnLink}` }]), 
+        JSON.stringify([{ 'src': returnLink }]),
         {
             status: 200,
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
             }
         }
@@ -535,7 +549,7 @@ async function tryRetry(err, context, uploadChannel, fullId, metadata, fileExt, 
     const channelList = ['CloudflareR2', 'TelegramNew', 'S3'];
     const errMessages = {};
     errMessages[uploadChannel] = 'Error: ' + uploadChannel + err;
-    
+
     for (let i = 0; i < channelList.length; i++) {
         if (channelList[i] !== uploadChannel) {
             let res = null;
