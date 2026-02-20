@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImgBed 上傳測試工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f0f14;
+            --bg-card: #1a1a24;
+            --bg-input: #22222e;
+            --border: #2d2d3d;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --success: #22c55e;
+            --success-bg: rgba(34, 197, 94, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            background: linear-gradient(135deg, #6366f1, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+
+        /* 設定區塊 */
+        .config-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-section h2 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .config-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* 上傳區域 */
+        .upload-zone {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-zone .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-zone p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .upload-zone .hint {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .upload-btns {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 檔案列表 */
+        .file-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .file-list-header h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-input);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.825rem;
+        }
+
+        .file-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .file-item .name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 0.75rem;
+        }
+
+        .file-item .size {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .file-item .remove-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0 0.25rem;
+            margin-left: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .file-item .remove-btn:hover {
+            color: var(--error);
+        }
+
+        /* 進度條 */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg-input);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            border-radius: 2px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* 結果區域 */
+        .results {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .results h2 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .result-item {
+            background: var(--bg-input);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-item.success {
+            border-left: 3px solid var(--success);
+        }
+
+        .result-item.error {
+            border-left: 3px solid var(--error);
+        }
+
+        .result-filename {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 80px;
+        }
+
+        .result-value {
+            flex: 1;
+            font-size: 0.8rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: var(--bg-primary);
+            padding: 0.35rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .copy-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        .result-preview {
+            margin-top: 0.75rem;
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 200px;
+        }
+
+        .result-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .error-msg {
+            color: var(--error);
+            font-size: 0.8rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 600px) {
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📤 ImgBed 上傳測試工具</h1>
+        <p class="subtitle">上傳檔案到你的 CloudFlare ImgBed 並獲取連結</p>
+
+        <!-- 設定 -->
+        <div class="config-section">
+            <h2>⚙️ 連線設定</h2>
+            <div class="config-grid">
+                <div class="full-width">
+                    <label>ImgBed 網址</label>
+                    <input type="text" id="apiUrl" value="https://imgbed.ajwkptc.uk"
+                        placeholder="https://your-imgbed.example.com">
+                </div>
+                <div class="full-width">
+                    <label>API Token 或 認證碼（authCode）</label>
+                    <input type="password" id="apiToken" placeholder="輸入你的 API Token 或 authCode">
+                </div>
+                <div>
+                    <label>上傳渠道</label>
+                    <select id="uploadChannel">
+                        <option value="telegram">Telegram</option>
+                        <option value="cfr2">Cloudflare R2</option>
+                        <option value="s3">S3</option>
+                    </select>
+                </div>
+                <div>
+                    <label>命名方式</label>
+                    <select id="uploadNameType">
+                        <option value="default">預設（前綴_原名）</option>
+                        <option value="index">僅前綴</option>
+                        <option value="origin">僅原名</option>
+                        <option value="short">短連結</option>
+                    </select>
+                </div>
+                <div>
+                    <label>上傳目錄（選填）</label>
+                    <input type="text" id="uploadFolder" placeholder="例如：blog/images">
+                </div>
+                <div>
+                    <label>返回格式</label>
+                    <select id="returnFormat">
+                        <option value="full">完整 URL</option>
+                        <option value="default">相對路徑</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 上傳區域 -->
+        <div class="upload-zone" id="dropZone">
+            <div class="icon">📁</div>
+            <p>拖曳檔案到此處，或點擊下方按鈕選擇</p>
+            <p class="hint">支援圖片、影片、文件等各種格式</p>
+            <div class="upload-btns">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">選擇檔案</button>
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('folderInput').click()">選擇資料夾</button>
+            </div>
+            <input type="file" id="fileInput" multiple style="display:none">
+            <input type="file" id="folderInput" webkitdirectory directory style="display:none">
+        </div>
+
+        <!-- 已選檔案列表 -->
+        <div class="file-list hidden" id="fileList">
+            <div class="file-list-header">
+                <h3>📋 已選檔案 (<span id="fileCount">0</span>)</h3>
+                <div>
+                    <button class="btn btn-secondary" onclick="clearFiles()" style="margin-right:0.5rem;">清除</button>
+                    <button class="btn btn-primary" id="uploadBtn" onclick="startUpload()">🚀 開始上傳</button>
+                </div>
+            </div>
+            <div id="fileItems"></div>
+        </div>
+
+        <!-- 進度 -->
+        <div class="hidden" id="progressSection">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p class="progress-text" id="progressText">上傳中...</p>
+        </div>
+
+        <!-- 結果 -->
+        <div class="results hidden" id="resultsSection">
+            <h2>✅ 上傳結果</h2>
+            <div id="resultItems"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+
+        // NOTE: 拖放與檔案選擇事件綁定
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const folderInput = document.getElementById('folderInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            addFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', () => {
+            addFiles(fileInput.files);
+            fileInput.value = '';
+        });
+        folderInput.addEventListener('change', () => {
+            addFiles(folderInput.files);
+            folderInput.value = '';
+        });
+
+        /**
+         * 將選取的檔案加入待上傳列表
+         * @param {FileList} files - 使用者選取的檔案
+         */
+        function addFiles(files) {
+            for (const file of files) {
+                // NOTE: 避免重複添加相同檔案（用名稱 + 大小判斷）
+                const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                if (!exists) {
+                    selectedFiles.push(file);
+                }
+            }
+            renderFileList();
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+        }
+
+        function clearFiles() {
+            selectedFiles = [];
+            renderFileList();
+        }
+
+        /**
+         * 格式化檔案大小為人類可讀字串
+         */
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        function renderFileList() {
+            const listEl = document.getElementById('fileList');
+            const itemsEl = document.getElementById('fileItems');
+            const countEl = document.getElementById('fileCount');
+
+            if (selectedFiles.length === 0) {
+                listEl.classList.add('hidden');
+                return;
+            }
+
+            listEl.classList.remove('hidden');
+            countEl.textContent = selectedFiles.length;
+
+            itemsEl.innerHTML = selectedFiles.map((file, i) => `
+                <div class="file-item">
+                    <span class="name" title="${file.name}">${file.name}</span>
+                    <span class="size">${formatSize(file.size)}</span>
+                    <button class="remove-btn" onclick="removeFile(${i})">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * 開始批量上傳所有已選檔案
+         */
+        async function startUpload() {
+            if (selectedFiles.length === 0) return;
+
+            const apiUrl = document.getElementById('apiUrl').value.replace(/\/$/, '');
+            const apiToken = document.getElementById('apiToken').value;
+            const uploadChannel = document.getElementById('uploadChannel').value;
+            const uploadNameType = document.getElementById('uploadNameType').value;
+            const uploadFolder = document.getElementById('uploadFolder').value;
+            const returnFormat = document.getElementById('returnFormat').value;
+
+            if (!apiUrl) {
+                alert('請填寫 ImgBed 網址！');
+                return;
+            }
+
+            // 顯示進度
+            const progressSection = document.getElementById('progressSection');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultItems = document.getElementById('resultItems');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            progressSection.classList.remove('hidden');
+            resultsSection.classList.remove('hidden');
+            resultItems.innerHTML = '';
+            uploadBtn.disabled = true;
+
+            let completed = 0;
+            const total = selectedFiles.length;
+
+            for (const file of selectedFiles) {
+                progressText.textContent = `上傳中 (${completed + 1}/${total})：${file.name}`;
+                progressFill.style.width = `${(completed / total) * 100}%`;
+
+                try {
+                    const result = await uploadFile(file, apiUrl, apiToken, {
+                        uploadChannel, uploadNameType, uploadFolder, returnFormat
+                    });
+                    renderResult(resultItems, file.name, result, apiUrl);
+                } catch (err) {
+                    renderError(resultItems, file.name, err.message);
+                }
+
+                completed++;
+                progressFill.style.width = `${(completed / total) * 100}%`;
+            }
+
+            progressText.textContent = `全部完成！共 ${total} 個檔案`;
+            uploadBtn.disabled = false;
+        }
+
+        /**
+         * 上傳單一檔案到 ImgBed API
+         * @param {File} file - 要上傳的檔案
+         * @param {string} apiUrl - ImgBed 網址
+         * @param {string} token - API Token
+         * @param {Object} options - 上傳選項
+         * @returns {Object} API 回應結果
+         */
+        async function uploadFile(file, apiUrl, token, options) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // NOTE: 使用 query 參數傳遞上傳設定
+            const params = new URLSearchParams();
+            if (options.uploadChannel) params.set('uploadChannel', options.uploadChannel);
+            if (options.uploadNameType) params.set('uploadNameType', options.uploadNameType);
+            if (options.uploadFolder) params.set('uploadFolder', options.uploadFolder);
+            if (options.returnFormat) params.set('returnFormat', options.returnFormat);
+
+            // NOTE: 使用 Authorization header 發送 API Token
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const url = `${apiUrl}/upload?${params.toString()}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            return await response.json();
+        }
+
+        /**
+         * 渲染上傳成功的結果項目
+         */
+        function renderResult(container, filename, result, apiUrl) {
+            const src = result[0]?.src || '';
+            // NOTE: 如果回傳的是相對路徑，拼接完整 URL
+            const fullUrl = src.startsWith('http') ? src : `${apiUrl}${src}`;
+            const htmlCode = `<img src="${fullUrl}" alt="${filename}">`;
+            const markdownCode = `![${filename}](${fullUrl})`;
+            const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(filename);
+
+            const div = document.createElement('div');
+            div.className = 'result-item success';
+            div.innerHTML = `
+                <div class="result-filename">✅ ${filename}</div>
+                <div class="result-row">
+                    <span class="result-label">🔗 下載連結</span>
+                    <span class="result-value">${fullUrl}</span>
+                    <button class="copy-btn" onclick="copyText(this, '${fullUrl.replace(/'/g, "\\'")}')">複製</button>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">🌐 HTML 碼</span>
+                    <span class="result-value">${escapeHtml(htmlCode)}</span>
+                    <button class="copy-btn" onclick="copyText(this, '${htmlCode.replace(/'/g, "\\'")}')">複製</button>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">📝 Markdown</span>
+                    <span class="result-value">${escapeHtml(markdownCode)}</span>
+                    <button class="copy-btn" onclick="copyText(this, '${markdownCode.replace(/'/g, "\\'")}')">複製</button>
+                </div>
+                ${isImage ? `
+                <div class="result-preview">
+                    <img src="${fullUrl}" alt="${filename}" loading="lazy">
+                </div>
+                ` : ''}
+            `;
+            container.appendChild(div);
+        }
+
+        function renderError(container, filename, errorMsg) {
+            const div = document.createElement('div');
+            div.className = 'result-item error';
+            div.innerHTML = `
+                <div class="result-filename">❌ ${filename}</div>
+                <p class="error-msg">${escapeHtml(errorMsg)}</p>
+            `;
+            container.appendChild(div);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        /**
+         * 複製文字到剪貼簿，並切換按鈕狀態
+         */
+        async function copyText(btn, text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                btn.textContent = '已複製';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '複製';
+                    btn.classList.remove('copied');
+                }, 1500);
+            } catch {
+                // HACK: 部分瀏覽器不支持 clipboard API，使用 fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                btn.textContent = '已複製';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '複製';
+                    btn.classList.remove('copied');
+                }, 1500);
+            }
+        }
+    </script>
+</body>
+
+</html>

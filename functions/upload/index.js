@@ -14,6 +14,16 @@ import { getDatabase } from '../utils/databaseAdapter.js';
 export async function onRequest(context) {  // Contents of context object
     const { request, env, params, waitUntil, next, data } = context;
 
+    // NOTE: 處理 CORS preflight 請求，允許瀏覽器跨域帶 Authorization header
+    if (request.method === 'OPTIONS') {
+        return createResponse(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Max-Age': '86400',
+            }
+        });
+    }
+
     // 解析请求的URL，存入 context
     const url = new URL(request.url);
     context.url = url;
